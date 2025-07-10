@@ -1,6 +1,38 @@
 # 🗜️ PDF Zipper
 
+<div align="center">
+
+![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20-lightgrey.svg)
+![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
+
+</div>
+
 A powerful PDF compression tool with both GUI and CLI interfaces, built with modern Python.
+
+## 📸 Screenshots
+
+<div align="center">
+<table>
+<tr>
+<td width="50%">
+
+### 🖥️ Beautiful Terminal GUI
+![GUI Interface](./examples/screenshot-gui.png)
+*Interactive file browser with drag & drop support*
+
+</td>
+<td width="50%">
+
+### ⌨️ Powerful Command Line Interface
+![CLI Interface](./examples/screenshot-cli.png)
+*Rich output with progress indicators and detailed info*
+
+</td>
+</tr>
+</table>
+</div>
 
 ## ✨ Features
 
@@ -53,7 +85,7 @@ pdf-zipper gui
 # Compress PDF to specific size (auto mode)
 pdf-zipper compress input.pdf --target-size 5.0
 
-# Compress PDF with specific DPI (manual mode)  
+# Compress PDF with specific DPI (manual mode)
 pdf-zipper compress input.pdf --dpi 150
 
 # Convert PDF to PowerPoint
@@ -66,10 +98,14 @@ pdf-zipper info input.pdf
 pdf-zipper --help
 ```
 
+The CLI provides rich, colorful output with progress indicators and detailed information (see CLI screenshot above).
+
 ### GUI Mode
 ```bash
 pdf-zipper gui
 ```
+
+The GUI provides an intuitive interface with file browser, drag & drop support, and real-time progress logging (see screenshot above).
 
 ### Programmatic Usage
 ```python
