@@ -2,6 +2,7 @@
 
 <div align="center">
 
+[![PyPI version](https://badge.fury.io/py/pdf-zipper.svg)](https://badge.fury.io/py/pdf-zipper)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20-lightgrey.svg)
@@ -46,7 +47,12 @@ A powerful PDF compression tool with both GUI and CLI interfaces, built with mod
 
 ## 🚀 Installation
 
-### From Source (Current Method)
+### From PyPI (Recommended)
+```bash
+pip install pdf-zipper
+```
+
+### From Source
 ```bash
 git clone https://github.com/your-username/pdf-zipper.git
 cd pdf-zipper
@@ -59,14 +65,6 @@ git clone https://github.com/your-username/pdf-zipper.git
 cd pdf-zipper
 ./install.sh
 ```
-
-### From Built Package (Local)
-```bash
-# After building the package
-pip install dist/pdf_zipper-1.0.0-py3-none-any.whl
-```
-
-### Future: From PyPI (Coming Soon)
 ```bash
 # Will be available after publishing to PyPI
 pip install pdf-zipper
