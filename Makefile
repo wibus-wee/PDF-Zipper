@@ -28,6 +28,9 @@ clean:  ## Clean build artifacts
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
+clean-all:  ## Deep clean all artifacts and cache files
+	python scripts/clean_project.py
+
 build:  ## Build the package
 	python -m build
 
@@ -62,3 +65,32 @@ demo:  ## Run a demo with sample PDF
 check:  ## Run all checks (lint, test)
 	$(MAKE) lint
 	$(MAKE) test
+
+build-exe:  ## Build standalone executable
+	python scripts/build_executable.py
+
+build-cli:  ## Build CLI-only executable
+	pyinstaller --onefile --name pdf-zipper-cli scripts/main_cli_only.py
+
+build-gui:  ## Build GUI executable with enhanced Textual support
+	python scripts/build_gui_executable.py
+
+build-full:  ## Build full executable (may fail due to GUI dependencies)
+	pyinstaller --onefile --name pdf-zipper-full scripts/main.py
+
+install-build:  ## Install build dependencies
+	pip install -e ".[build]"
+
+clean-exe:  ## Clean executable build artifacts
+	rm -rf build/ dist/ release/ hooks/
+	find . -name "*.spec" -delete
+
+test-exe:  ## Test built executables
+	@echo "Testing CLI executable..."
+	@if [ -f "release/pdf-zipper-cli-macos-arm64" ]; then \
+		./release/pdf-zipper-cli-macos-arm64 --version; \
+	elif [ -f "dist/pdf-zipper-cli" ]; then \
+		./dist/pdf-zipper-cli --version; \
+	else \
+		echo "No CLI executable found. Run 'make build-exe' first."; \
+	fi

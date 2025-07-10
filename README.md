@@ -59,6 +59,43 @@ cd pdf-zipper
 pip install -e .
 ```
 
+### Standalone Executable (No Python Required)
+
+Download the pre-built executable for your platform:
+
+**macOS (Apple Silicon)**
+```bash
+# Option 1: App Bundle (Recommended for GUI users)
+# Download PDF-Zipper-darwin-arm64.app from releases page
+# Double-click to launch GUI interface
+
+# Option 2: Command Line Executable
+# Download from releases page
+chmod +x pdf-zipper-gui-darwin-arm64
+./pdf-zipper-gui-darwin-arm64 --help
+./pdf-zipper-gui-darwin-arm64 gui  # Launch GUI
+```
+
+**Windows**
+```cmd
+REM Download from releases page
+pdf-zipper-cli-windows-x64.exe --help
+```
+
+**Linux**
+```bash
+# Download from releases page
+chmod +x pdf-zipper-cli-linux-x64
+./pdf-zipper-cli-linux-x64 --help
+```
+
+### From Source
+```bash
+git clone https://github.com/your-username/pdf-zipper.git
+cd pdf-zipper
+pip install -e .
+```
+
 ### Using Installation Script
 ```bash
 git clone https://github.com/your-username/pdf-zipper.git
