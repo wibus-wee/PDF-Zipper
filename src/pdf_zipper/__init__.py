@@ -14,7 +14,7 @@ from .core import autocompress_pdf, compress_pdf, convert_to_ppt
 
 __all__ = [
     "autocompress_pdf",
-    "compress_pdf", 
+    "compress_pdf",
     "convert_to_ppt",
     "__version__",
 ]

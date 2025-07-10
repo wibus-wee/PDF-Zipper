@@ -52,9 +52,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-username/pdf-zipper"
-Repository = "https://github.com/your-username/pdf-zipper"
-Issues = "https://github.com/your-username/pdf-zipper/issues"
+Homepage = "https://github.com/wibus-wee/pdf-zipper"
+Repository = "https://github.com/wibus-wee/pdf-zipper"
+Issues = "https://github.com/wibus-wee/pdf-zipper/issues"
 
 [project.scripts]
 pdf-zipper = "pdf_zipper.cli:main"

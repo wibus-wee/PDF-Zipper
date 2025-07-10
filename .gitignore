@@ -132,6 +132,5 @@ dmypy.json
 *.pdf
 *.pptx
 sample.*
-test_*
 *_compressed.*
 *_converted.*
