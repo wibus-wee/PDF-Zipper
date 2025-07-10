@@ -138,6 +138,13 @@ class PDFZipperApp(App):
         """Handle paste events for drag and drop functionality."""
         # 检查粘贴的内容是否是文件路径
         pasted_text = event.text.strip()
+
+        # 预处理粘贴的文本，去除可能的引号
+        if pasted_text:
+            if (pasted_text.startswith("'") and pasted_text.endswith("'")) or \
+               (pasted_text.startswith('"') and pasted_text.endswith('"')):
+                pasted_text = pasted_text[1:-1].strip()
+
         if pasted_text and (pasted_text.lower().endswith('.pdf') or os.path.exists(pasted_text)):
             # 如果当前焦点在自定义路径输入框
             try:
@@ -151,6 +158,17 @@ class PDFZipperApp(App):
     def _update_selected_path_from_custom(self):
         """Update selected path from custom input."""
         custom_path = self.query_one("#custom-path").value.strip()
+
+        # 处理从 Finder 拖拽时的引号包裹问题
+        if custom_path:
+            # 去除前后的单引号或双引号
+            if (custom_path.startswith("'") and custom_path.endswith("'")) or \
+               (custom_path.startswith('"') and custom_path.endswith('"')):
+                custom_path = custom_path[1:-1]
+
+            # 再次去除可能的空格
+            custom_path = custom_path.strip()
+
         if custom_path and os.path.exists(custom_path) and custom_path.lower().endswith('.pdf'):
             self.selected_path = Path(custom_path)
             self.query_one("#selected-file").update(f"Custom: [bold cyan]{custom_path}[/bold cyan]")
