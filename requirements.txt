@@ -1,0 +1,6 @@
+PyMuPDF
+Pillow
+python-pptx
+rich
+questionary
+textual

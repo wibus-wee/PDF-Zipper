@@ -1,0 +1,83 @@
+/* compress.css */
+
+Screen {
+    background: $panel;
+    color: $text;
+}
+
+Container {
+    layout: horizontal;
+    height: 100%;
+}
+
+#tree-view {
+    width: 30%;
+    border: solid $accent;
+    background: $surface;
+    overflow-y: auto;
+}
+
+#main-view {
+    width: 70%;
+    padding: 0 1;
+    overflow: hidden;
+}
+
+#selected-file {
+    height: auto;
+    padding: 1;
+    background: $surface;
+    border: round $background-lighten-2;
+    margin-bottom: 1;
+}
+
+#tabs {
+    height: 1fr;
+    min-height: 10;
+}
+
+TabPane {
+    padding: 1 2;
+    height: 100%;
+}
+
+#log {
+    margin-top: 1;
+    height: 1fr;
+    border: round $background-lighten-2;
+    background: $surface;
+    overflow-y: auto;
+}
+
+Button {
+    width: 100%;
+    margin-top: 1;
+}
+
+Label {
+    margin-top: 1;
+}
+
+#custom-path {
+    margin-bottom: 1;
+    border: dashed $accent;
+}
+
+#custom-path:focus {
+    border: solid $accent;
+}
+
+#custom-operations {
+    margin-top: 1;
+}
+
+#custom-operations Button {
+    width: 1fr;
+    margin: 0 1 0 0;
+}
+
+#custom-operations Button:last-child {
+    margin-right: 0;
+}
+
+
