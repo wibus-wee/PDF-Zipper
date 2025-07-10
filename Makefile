@@ -31,8 +31,20 @@ clean:  ## Clean build artifacts
 build:  ## Build the package
 	python -m build
 
+upload-test:  ## Upload to Test PyPI
+	python -m twine upload --repository testpypi dist/*
+
 upload:  ## Upload to PyPI (requires API token)
 	python -m twine upload dist/*
+
+check-dist:  ## Check distribution files
+	twine check dist/*
+
+publish:  ## Full publish workflow (clean, build, check, upload)
+	$(MAKE) clean
+	$(MAKE) build
+	$(MAKE) check-dist
+	@echo "Ready to upload. Run 'make upload-test' first, then 'make upload'"
 
 dev-setup:  ## Set up development environment
 	python -m venv .venv
