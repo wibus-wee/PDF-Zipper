@@ -5,6 +5,30 @@ All notable changes to PDF Zipper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-01-10
+
+### Removed
+- **Pandoc Support**: Removed Pandoc from PPTX conversion tools as it doesn't support PPTX to PDF conversion
+- **Unnecessary Dependencies**: Cleaned up conversion tool detection
+
+### Improved
+- **GUI Enhancement**: Added comprehensive tool status display in GUI
+- **System Information**: New "System Info" tab showing available conversion tools
+- **User Experience**: Better error messages and installation guidance
+- **Tool Detection**: More accurate detection of available conversion tools
+
+### Added
+- **Enhanced GUI**: Tool status indicators in PPTX to PDF tab
+- **System Info Tab**: Real-time display of system and tool information
+- **Refresh Functionality**: Button to refresh tool status in GUI
+- **Better Logging**: Detailed tool availability information in GUI logs
+
+### Technical Details
+- Focused on LibreOffice and unoconv as primary conversion tools
+- Improved fallback method with better user guidance
+- Enhanced GUI with real-time tool status monitoring
+- Cleaner codebase with removed unused Pandoc integration
+
 ## [1.1.0] - 2025-01-10
 
 ### Added

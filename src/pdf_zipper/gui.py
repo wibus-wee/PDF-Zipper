@@ -32,6 +32,7 @@ from .core import (
     convert_pptx_to_pdf,
     get_file_type,
     validate_input_file,
+    check_conversion_tools,
     SUPPORTED_INPUT_TYPES
 )
 
@@ -152,8 +153,15 @@ class PDFZipperApp(App):
                     with TabPane("PPTX to PDF", id="tab-pptx-pdf"):
                         yield Label("Convert PowerPoint to PDF:")
                         yield Static("Select a .pptx file and click convert")
+                        yield Static("", id="conversion-tools-status")
                         yield Button(
                             "Convert to PDF", variant="primary", id="btn-pptx-pdf"
+                        )
+                    with TabPane("System Info", id="tab-system"):
+                        yield Label("System Information:")
+                        yield Static("", id="system-info-display")
+                        yield Button(
+                            "Refresh Info", variant="default", id="btn-refresh-info"
                         )
                 yield RichLog(id="log", wrap=True, highlight=True)
         yield Footer()
@@ -168,6 +176,142 @@ class PDFZipperApp(App):
         log.write("  - 或使用「Custom Path」选项卡输入/拖拽文件路径")
         log.write("  - 然后点击对应的操作按钮开始处理")
         log.write("  - 支持的文件类型: PDF (.pdf), PowerPoint (.pptx)")
+
+        # 检查转换工具状态
+        self._check_conversion_tools()
+
+        # 更新系统信息显示
+        self._update_system_info()
+
+    def _check_conversion_tools(self) -> None:
+        """检查系统中可用的转换工具并更新状态显示"""
+        try:
+            log = self.query_one(RichLog)
+            log.write("🔍 Checking conversion tools...")
+
+            self.conversion_tools = check_conversion_tools()
+            self._update_tools_status_display()
+            self._log_tools_status()
+
+        except Exception as e:
+            log = self.query_one(RichLog)
+            log.write(f"[bold yellow]Warning:[/bold yellow] Failed to check conversion tools: {e}")
+
+    def _log_tools_status(self) -> None:
+        """在日志中显示工具状态"""
+        if not self.conversion_tools:
+            return
+
+        log = self.query_one(RichLog)
+
+        # 检查可用工具
+        available_tools = []
+        missing_tools = []
+
+        for tool, available in self.conversion_tools.items():
+            if available:
+                available_tools.append(tool)
+            else:
+                missing_tools.append(tool)
+
+        if available_tools:
+            log.write(f"✅ Available conversion tools: {', '.join(available_tools)}")
+
+        if missing_tools:
+            log.write(f"❌ Missing tools: {', '.join(missing_tools)}")
+
+        # 提供安装建议
+        if not any(self.conversion_tools.values()):
+            log.write("[bold yellow]💡 For better PPTX conversion with full styling:[/bold yellow]")
+            log.write("  - Install LibreOffice: https://www.libreoffice.org/")
+            log.write("  - Or unoconv: pip install unoconv")
+            log.write("  - macOS: brew install --cask libreoffice")
+            log.write("  - Ubuntu: sudo apt install libreoffice")
+        else:
+            log.write("🎉 PPTX to PDF conversion will preserve full styling!")
+
+    def _update_tools_status_display(self) -> None:
+        """更新工具状态显示"""
+        try:
+            status_widget = self.query_one("#conversion-tools-status")
+
+            if not self.conversion_tools:
+                status_widget.update("[bold red]⚠️ Tool status check failed[/bold red]")
+                return
+
+            # 检查是否有任何高质量转换工具可用
+            has_good_tools = any(self.conversion_tools.values())
+
+            if has_good_tools:
+                # 显示可用的工具
+                available_tools = []
+                if self.conversion_tools.get("libreoffice"):
+                    available_tools.append("✅ LibreOffice")
+                if self.conversion_tools.get("unoconv"):
+                    available_tools.append("✅ unoconv")
+
+                status_text = "🔧 Available tools: " + ", ".join(available_tools)
+                status_widget.update(f"[bold green]{status_text}[/bold green]")
+            else:
+                # 没有高质量工具，显示警告和安装建议
+                status_widget.update(
+                    "[bold yellow]⚠️ No advanced tools found. Text-only conversion.[/bold yellow]\n"
+                    "[dim]Install LibreOffice for full styling support[/dim]"
+                )
+
+        except Exception:
+            # 如果更新失败，静默处理
+            pass
+
+    def _update_system_info(self) -> None:
+        """更新系统信息显示"""
+        try:
+            import platform
+            import sys
+            from pdf_zipper import __version__
+
+            system_info_widget = self.query_one("#system-info-display")
+
+            # 收集系统信息
+            info_lines = [
+                f"📦 PDF Zipper: v{__version__}",
+                f"🐍 Python: {sys.version.split()[0]}",
+                f"💻 System: {platform.system()} {platform.release()}",
+                f"🏗️  Architecture: {platform.machine()}",
+                "",
+                "🔧 Conversion Tools Status:",
+            ]
+
+            if self.conversion_tools:
+                for tool, available in self.conversion_tools.items():
+                    status = "✅" if available else "❌"
+                    tool_name = tool.capitalize()
+                    info_lines.append(f"  {status} {tool_name}")
+            else:
+                info_lines.append("  ⚠️ Tool check not completed")
+
+            # 添加安装建议
+            if self.conversion_tools and not any(self.conversion_tools.values()):
+                info_lines.extend([
+                    "",
+                    "💡 Installation Tips:",
+                    "  • LibreOffice: https://www.libreoffice.org/",
+                    "  • unoconv: pip install unoconv",
+                    "  • macOS: brew install --cask libreoffice",
+                    "  • Ubuntu: sudo apt install libreoffice",
+                    "  • Windows: Download from official site"
+                ])
+
+            system_info_text = "\n".join(info_lines)
+            system_info_widget.update(system_info_text)
+
+        except Exception:
+            # 如果更新失败，显示错误信息
+            try:
+                system_info_widget = self.query_one("#system-info-display")
+                system_info_widget.update("❌ Failed to load system information")
+            except Exception:
+                pass
 
     def on_directory_tree_file_selected(
         self, event: DirectoryTree.FileSelected
@@ -363,6 +507,13 @@ class PDFZipperApp(App):
                 return
             output_path = f"{base}_converted.pdf"
             self.worker_convert_pptx_to_pdf(input_path, output_path, logger)
+
+        elif event.button.id == "btn-refresh-info":
+            # 刷新系统信息
+            log.write("🔄 Refreshing system information...")
+            self._check_conversion_tools()
+            self._update_system_info()
+            log.write("✅ System information updated")
 
 
 def launch_gui():

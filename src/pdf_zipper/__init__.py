@@ -6,9 +6,9 @@ for compressing PDF files, converting between PDF and PowerPoint formats,
 and performing various file processing tasks with multi-format support.
 """
 
-__version__ = "1.1.0"
-__author__ = "PDF Zipper Team"
-__email__ = "team@pdfzipper.com"
+__version__ = "1.1.1"
+__author__ = "wibus-wee"
+__email__ = "wibus_wee@outlook.com"
 
 from .core import (
     autocompress_pdf,

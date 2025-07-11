@@ -229,6 +229,38 @@ def compress_pdf(
         logger_func(f"  - Saved to:      [cyan]{output_path}[/cyan]")
 
 
+def check_conversion_tools() -> dict:
+    """检查系统中可用的转换工具"""
+    tools = {}
+
+    try:
+        import subprocess
+
+        # 检查 LibreOffice
+        try:
+            subprocess.run(["libreoffice", "--version"],
+                         capture_output=True, timeout=5, check=True)
+            tools["libreoffice"] = True
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            tools["libreoffice"] = False
+
+        # 检查 unoconv
+        try:
+            subprocess.run(["unoconv", "--version"],
+                         capture_output=True, timeout=5, check=True)
+            tools["unoconv"] = True
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            tools["unoconv"] = False
+
+
+
+    except ImportError:
+        # subprocess 不可用
+        tools = {"libreoffice": False, "unoconv": False}
+
+    return tools
+
+
 def convert_pptx_to_pdf(
     input_path: str, output_path: str, logger_func: Callable[[str], None]
 ) -> None:
@@ -245,6 +277,17 @@ def convert_pptx_to_pdf(
     if not os.path.exists(input_path):
         logger_func(f"[bold red]Error:[/bold red] Input file not found: '{input_path}'")
         return
+
+    # 检查可用的转换工具
+    available_tools = check_conversion_tools()
+    has_good_tools = any(available_tools.values())
+
+    if not has_good_tools:
+        logger_func("[bold yellow]Warning:[/bold yellow] No advanced conversion tools found.")
+        logger_func("For better PPTX to PDF conversion with full styling, consider installing:")
+        logger_func("  - LibreOffice: https://www.libreoffice.org/")
+        logger_func("  - Or unoconv: pip install unoconv")
+        logger_func("Using fallback method (text-only)...")
 
     try:
         # 使用不同平台的转换方法
@@ -306,10 +349,103 @@ def _convert_pptx_to_pdf_windows(
 def _convert_pptx_to_pdf_cross_platform(
     input_path: str, output_path: str, logger_func: Callable[[str], None]
 ) -> None:
-    """跨平台方法：将 PPTX 转换为图片再合成 PDF"""
+    """跨平台方法：优先使用系统工具，保持完整样式"""
     logger_func("Using cross-platform conversion method...")
 
+    # 尝试多种系统工具进行转换
+    conversion_methods = [
+        ("LibreOffice", _try_libreoffice_conversion),
+        ("unoconv", _try_unoconv_conversion),
+    ]
+
+    for method_name, conversion_func in conversion_methods:
+        logger_func(f"Trying {method_name} conversion...")
+        try:
+            if conversion_func(input_path, output_path, logger_func):
+                logger_func(f"✅ {method_name} conversion successful!")
+                return
+        except Exception as e:
+            logger_func(f"⚠️  {method_name} conversion failed: {e}")
+            continue
+
+    # 如果所有系统工具都失败，使用备用方法
+    logger_func("All system tools failed, using fallback method...")
+    _convert_pptx_fallback_method(input_path, output_path, logger_func)
+
+
+def _try_libreoffice_conversion(input_pptx: str, output_pdf: str, logger_func: Callable[[str], None]) -> bool:
+    """使用 LibreOffice 转换 PPTX 到 PDF（保持完整样式）"""
     try:
+        import subprocess
+
+        # 确保输出目录存在
+        output_dir = os.path.dirname(output_pdf)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # 使用 LibreOffice 命令行转换
+        cmd = [
+            "libreoffice",
+            "--headless",
+            "--convert-to", "pdf",
+            "--outdir", output_dir,
+            input_pptx
+        ]
+
+        logger_func("  - Running LibreOffice conversion...")
+        subprocess.run(cmd, check=True, capture_output=True, timeout=60, text=True)
+
+        # LibreOffice 会创建与输入文件同名但扩展名为 .pdf 的文件
+        expected_output = os.path.join(
+            output_dir,
+            os.path.splitext(os.path.basename(input_pptx))[0] + ".pdf"
+        )
+
+        if os.path.exists(expected_output):
+            if expected_output != output_pdf:
+                os.rename(expected_output, output_pdf)
+            return True
+
+    except subprocess.TimeoutExpired:
+        logger_func("  - LibreOffice conversion timed out")
+    except subprocess.CalledProcessError as e:
+        logger_func(f"  - LibreOffice conversion failed: {e.stderr}")
+    except FileNotFoundError:
+        logger_func("  - LibreOffice not found in system PATH")
+    except Exception as e:
+        logger_func(f"  - LibreOffice conversion error: {e}")
+
+    return False
+
+
+def _try_unoconv_conversion(input_pptx: str, output_pdf: str, logger_func: Callable[[str], None]) -> bool:
+    """使用 unoconv 转换 PPTX 到 PDF"""
+    try:
+        import subprocess
+
+        logger_func("  - Running unoconv conversion...")
+        cmd = ["unoconv", "-f", "pdf", "-o", output_pdf, input_pptx]
+
+        subprocess.run(cmd, check=True, capture_output=True, timeout=60, text=True)
+        return os.path.exists(output_pdf)
+
+    except subprocess.TimeoutExpired:
+        logger_func("  - unoconv conversion timed out")
+    except subprocess.CalledProcessError as e:
+        logger_func(f"  - unoconv conversion failed: {e.stderr}")
+    except FileNotFoundError:
+        logger_func("  - unoconv not found in system PATH")
+    except Exception as e:
+        logger_func(f"  - unoconv conversion error: {e}")
+
+    return False
+
+
+
+def _convert_pptx_fallback_method(input_path: str, output_path: str, logger_func: Callable[[str], None]) -> None:
+    """备用方法：创建包含幻灯片信息的 PDF"""
+    try:
+        logger_func("Using fallback method (text-only conversion)...")
+
         # 读取 PowerPoint 文件
         prs = Presentation(input_path)
         total_slides = len(prs.slides)
@@ -319,105 +455,52 @@ def _convert_pptx_to_pdf_cross_platform(
             logger_func("[bold red]Error:[/bold red] No slides found in presentation")
             return
 
-        # 创建临时目录存储图片
-        with tempfile.TemporaryDirectory() as temp_dir:
-            image_paths = []
+        # 创建 PDF 文档
+        doc = fitz.open()
 
-            # 将每个幻灯片转换为图片
-            for i, slide in enumerate(prs.slides):
-                logger_func(f"  - Processing slide {i+1}/{total_slides}")
+        for i, slide in enumerate(prs.slides):
+            logger_func(f"  - Processing slide {i+1}/{total_slides}")
 
-                # 这里我们使用一个简化的方法：
-                # 由于 python-pptx 不直接支持渲染为图片，我们创建一个临时的单页 PPTX
-                # 然后使用 PyMuPDF 来处理（如果可能的话）
-                temp_pptx = os.path.join(temp_dir, f"slide_{i+1}.pptx")
-                temp_pdf = os.path.join(temp_dir, f"slide_{i+1}.pdf")
+            # 创建新页面
+            page = doc.new_page()
 
-                # 创建只包含当前幻灯片的演示文稿
-                single_slide_prs = Presentation()
-                single_slide_prs.slide_width = prs.slide_width
-                single_slide_prs.slide_height = prs.slide_height
+            # 添加标题
+            title_rect = fitz.Rect(50, 50, 550, 100)
+            page.insert_textbox(title_rect, f"Slide {i+1}", fontsize=20, align=1)
 
-                # 复制幻灯片布局和内容（简化版本）
-                slide_layout = single_slide_prs.slide_layouts[6]  # 空白布局
-                new_slide = single_slide_prs.slides.add_slide(slide_layout)
+            # 提取并添加文本内容
+            y_position = 120
+            for shape in slide.shapes:
+                if hasattr(shape, 'text') and shape.text.strip():
+                    text_rect = fitz.Rect(50, y_position, 550, y_position + 50)
+                    page.insert_textbox(text_rect, shape.text.strip(), fontsize=12, align=0)
+                    y_position += 60
 
-                # 复制形状（这是一个简化的实现）
-                for shape in slide.shapes:
-                    try:
-                        # 这里只是一个基本的形状复制示例
-                        # 实际实现会更复杂
-                        if hasattr(shape, 'text'):
-                            # 处理文本框
-                            textbox = new_slide.shapes.add_textbox(
-                                shape.left, shape.top, shape.width, shape.height
-                            )
-                            textbox.text = shape.text
-                    except Exception:
-                        # 忽略无法复制的形状
-                        continue
+                    if y_position > 750:  # 避免超出页面
+                        break
 
-                single_slide_prs.save(temp_pptx)
-
-                # 尝试使用系统命令转换（如果可用）
-                if not _try_system_conversion(temp_pptx, temp_pdf, logger_func):
-                    # 如果系统转换失败，创建一个占位符 PDF
-                    _create_placeholder_pdf(temp_pdf, f"Slide {i+1}", logger_func)
-
-                if os.path.exists(temp_pdf):
-                    image_paths.append(temp_pdf)
-
-            # 合并所有 PDF 页面
-            if image_paths:
-                _merge_pdfs(image_paths, output_path, logger_func)
-            else:
-                logger_func("[bold red]Error:[/bold red] No slides were successfully converted")
-
-    except Exception as e:
-        logger_func(f"[bold red]Error:[/bold red] Cross-platform conversion failed: {e}")
-
-
-def _try_system_conversion(input_pptx: str, output_pdf: str, logger_func: Callable[[str], None]) -> bool:
-    """尝试使用系统命令转换 PPTX 到 PDF"""
-    try:
-        import subprocess
-
-        # 尝试使用 LibreOffice (如果可用)
-        try:
-            subprocess.run([
-                "libreoffice", "--headless", "--convert-to", "pdf",
-                "--outdir", os.path.dirname(output_pdf), input_pptx
-            ], check=True, capture_output=True, timeout=30)
-
-            # LibreOffice 会创建与输入文件同名但扩展名为 .pdf 的文件
-            expected_output = os.path.join(
-                os.path.dirname(output_pdf),
-                os.path.splitext(os.path.basename(input_pptx))[0] + ".pdf"
+            # 添加警告信息
+            warning_rect = fitz.Rect(50, 750, 550, 780)
+            page.insert_textbox(
+                warning_rect,
+                "⚠️ This is a text-only conversion. For full styling, install LibreOffice.",
+                fontsize=10,
+                align=1
             )
 
-            if os.path.exists(expected_output):
-                if expected_output != output_pdf:
-                    os.rename(expected_output, output_pdf)
-                return True
+        # 保存 PDF
+        doc.save(output_path)
+        doc.close()
 
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-            pass
+        logger_func(f"✅ Fallback conversion completed with {total_slides} pages")
+        logger_func("[bold yellow]Note:[/bold yellow] This conversion preserves text only.")
+        logger_func("[bold yellow]Tip:[/bold yellow] Install LibreOffice for full styling support:")
+        logger_func("  - macOS: brew install --cask libreoffice")
+        logger_func("  - Ubuntu: sudo apt install libreoffice")
+        logger_func("  - Windows: Download from https://www.libreoffice.org/")
 
-        # 尝试使用 unoconv (如果可用)
-        try:
-            subprocess.run([
-                "unoconv", "-f", "pdf", "-o", output_pdf, input_pptx
-            ], check=True, capture_output=True, timeout=30)
-
-            return os.path.exists(output_pdf)
-
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-            pass
-
-    except Exception:
-        pass
-
-    return False
+    except Exception as e:
+        logger_func(f"[bold red]Error:[/bold red] Fallback conversion failed: {e}")
 
 
 def _create_placeholder_pdf(output_path: str, text: str, logger_func: Callable[[str], None]) -> None:
