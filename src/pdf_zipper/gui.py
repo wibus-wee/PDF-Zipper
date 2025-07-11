@@ -25,7 +25,15 @@ from textual.widgets import (
     TabPane,
 )
 
-from .core import autocompress_pdf, compress_pdf, convert_to_ppt
+from .core import (
+    autocompress_pdf,
+    compress_pdf,
+    convert_to_ppt,
+    convert_pptx_to_pdf,
+    get_file_type,
+    validate_input_file,
+    SUPPORTED_INPUT_TYPES
+)
 
 
 class PDFZipperApp(App):
@@ -89,14 +97,14 @@ class PDFZipperApp(App):
             yield DirectoryTree(".", id="tree-view")
             with Vertical(id="main-view"):
                 yield Static(
-                    "Select a PDF file from the tree or enter custom path.",
+                    "Select a file (PDF/PPTX) from the tree or enter custom path.",
                     id="selected-file",
                 )
                 with TabbedContent(id="tabs"):
                     with TabPane("Custom Path", id="tab-custom"):
-                        yield Label("PDF File Path:")
+                        yield Label("File Path (PDF/PPTX):")
                         yield Input(
-                            placeholder="输入完整PDF文件路径，如: /Users/name/file.pdf",
+                            placeholder="输入完整文件路径，如: /Users/name/file.pdf 或 file.pptx",
                             id="custom-path",
                         )
                         with Horizontal(id="custom-operations"):
@@ -141,6 +149,12 @@ class PDFZipperApp(App):
                         yield Button(
                             "Start Conversion", variant="primary", id="btn-ppt"
                         )
+                    with TabPane("PPTX to PDF", id="tab-pptx-pdf"):
+                        yield Label("Convert PowerPoint to PDF:")
+                        yield Static("Select a .pptx file and click convert")
+                        yield Button(
+                            "Convert to PDF", variant="primary", id="btn-pptx-pdf"
+                        )
                 yield RichLog(id="log", wrap=True, highlight=True)
         yield Footer()
 
@@ -150,24 +164,29 @@ class PDFZipperApp(App):
         log = self.query_one(RichLog)
         log.write("Welcome to PDF Zipper!")
         log.write("💡 提示：")
-        log.write("  - 从左侧文件树选择PDF文件")
+        log.write("  - 从左侧文件树选择文件 (PDF/PPTX)")
         log.write("  - 或使用「Custom Path」选项卡输入/拖拽文件路径")
         log.write("  - 然后点击对应的操作按钮开始处理")
+        log.write("  - 支持的文件类型: PDF (.pdf), PowerPoint (.pptx)")
 
     def on_directory_tree_file_selected(
         self, event: DirectoryTree.FileSelected
     ) -> None:
         """Handle file selection from directory tree."""
-        if str(event.path).lower().endswith(".pdf"):
+        file_path = str(event.path)
+        if validate_input_file(file_path):
+            ext, desc = get_file_type(file_path)
             self.query_one("#selected-file").update(
-                f"Selected: [bold cyan]{event.path}[/bold cyan]"
+                f"Selected: [bold cyan]{event.path}[/bold cyan] ({desc})"
             )
             self.selected_path = event.path
             # 同时更新自定义路径输入框
             self.query_one("#custom-path").value = str(event.path)
         else:
+            ext, desc = get_file_type(file_path)
+            supported_types = ", ".join(SUPPORTED_INPUT_TYPES.keys())
             self.query_one("#selected-file").update(
-                "[bold red]Please select a .pdf file.[/bold red]"
+                f"[bold red]Unsupported file type: {ext}. Supported: {supported_types}[/bold red]"
             )
             self.selected_path = None
 
@@ -184,7 +203,7 @@ class PDFZipperApp(App):
                 pasted_text = pasted_text[1:-1].strip()
 
         if pasted_text and (
-            pasted_text.lower().endswith(".pdf") or os.path.exists(pasted_text)
+            validate_input_file(pasted_text) or os.path.exists(pasted_text)
         ):
             # 如果当前焦点在自定义路径输入框
             try:
@@ -210,23 +229,27 @@ class PDFZipperApp(App):
             # 再次去除可能的空格
             custom_path = custom_path.strip()
 
-        if (
-            custom_path
-            and os.path.exists(custom_path)
-            and custom_path.lower().endswith(".pdf")
-        ):
+        if custom_path and os.path.exists(custom_path) and validate_input_file(custom_path):
+            ext, desc = get_file_type(custom_path)
             self.selected_path = Path(custom_path)
             self.query_one("#selected-file").update(
-                f"Custom: [bold cyan]{custom_path}[/bold cyan]"
+                f"Custom: [bold cyan]{custom_path}[/bold cyan] ({desc})"
             )
         elif custom_path:
-            self.query_one("#selected-file").update(
-                f"[bold red]Invalid path: {custom_path}[/bold red]"
-            )
+            if os.path.exists(custom_path):
+                ext, desc = get_file_type(custom_path)
+                supported_types = ", ".join(SUPPORTED_INPUT_TYPES.keys())
+                self.query_one("#selected-file").update(
+                    f"[bold red]Unsupported file type: {ext}. Supported: {supported_types}[/bold red]"
+                )
+            else:
+                self.query_one("#selected-file").update(
+                    f"[bold red]File not found: {custom_path}[/bold red]"
+                )
             self.selected_path = None
         else:
             self.query_one("#selected-file").update(
-                "Select a PDF file from the tree or enter custom path."
+                "Select a file (PDF/PPTX) from the tree or enter custom path."
             )
             self.selected_path = None
 
@@ -256,20 +279,28 @@ class PDFZipperApp(App):
         """Worker for PPT conversion."""
         convert_to_ppt(input_path, output_path, dpi, logger_func)
 
+    @work(thread=True)
+    def worker_convert_pptx_to_pdf(
+        self, input_path: str, output_path: str, logger_func
+    ) -> None:
+        """Worker for PPTX to PDF conversion."""
+        convert_pptx_to_pdf(input_path, output_path, logger_func)
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses and dispatch jobs."""
         log = self.query_one(RichLog)
         log.clear()
 
         if not hasattr(self, "selected_path") or self.selected_path is None:
-            log.write("[bold red]Error: No PDF file selected.[/bold red]")
-            log.write("请先选择PDF文件：")
-            log.write("  1. 从左侧文件树选择PDF文件")
+            log.write("[bold red]Error: No file selected.[/bold red]")
+            log.write("请先选择文件：")
+            log.write("  1. 从左侧文件树选择文件 (PDF/PPTX)")
             log.write("  2. 或在「Custom Path」选项卡中输入文件路径")
             return
 
         input_path = str(self.selected_path)
-        base, _ = os.path.splitext(os.path.basename(input_path))
+        base, ext = os.path.splitext(os.path.basename(input_path))
+        input_ext, input_desc = get_file_type(input_path)
 
         # Common logger function
         def logger(message):
@@ -313,6 +344,10 @@ class PDFZipperApp(App):
             self.worker_manual_compress(input_path, output_path, dpi, logger)
 
         elif event.button.id == "btn-ppt":
+            # PDF to PowerPoint conversion
+            if input_ext != ".pdf":
+                log.write("[bold red]Error: PDF to PPT conversion requires a PDF file.[/bold red]")
+                return
             dpi_input = self.query_one("#ppt-dpi", Input)
             if not dpi_input.is_valid or not dpi_input.value:
                 log.write("[bold red]Error: Invalid DPI value.[/bold red]")
@@ -320,6 +355,14 @@ class PDFZipperApp(App):
             dpi = int(dpi_input.value)
             output_path = f"{base}_converted.pptx"
             self.worker_convert_ppt(input_path, output_path, dpi, logger)
+
+        elif event.button.id == "btn-pptx-pdf":
+            # PowerPoint to PDF conversion
+            if input_ext != ".pptx":
+                log.write("[bold red]Error: PPTX to PDF conversion requires a PowerPoint file.[/bold red]")
+                return
+            output_path = f"{base}_converted.pdf"
+            self.worker_convert_pptx_to_pdf(input_path, output_path, logger)
 
 
 def launch_gui():

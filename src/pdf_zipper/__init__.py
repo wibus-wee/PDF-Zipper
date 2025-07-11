@@ -1,20 +1,34 @@
 """
-PDF Zipper - A powerful PDF compression tool with GUI and CLI interfaces.
+PDF Zipper - A powerful file processing tool with GUI and CLI interfaces.
 
 This package provides both command-line and graphical user interfaces
-for compressing PDF files, converting them to PowerPoint presentations,
-and performing various PDF optimization tasks.
+for compressing PDF files, converting between PDF and PowerPoint formats,
+and performing various file processing tasks with multi-format support.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "PDF Zipper Team"
 __email__ = "team@pdfzipper.com"
 
-from .core import autocompress_pdf, compress_pdf, convert_to_ppt
+from .core import (
+    autocompress_pdf,
+    compress_pdf,
+    convert_to_ppt,
+    convert_pptx_to_pdf,
+    get_file_type,
+    validate_input_file,
+    SUPPORTED_INPUT_TYPES,
+    SUPPORTED_OUTPUT_TYPES
+)
 
 __all__ = [
     "autocompress_pdf",
     "compress_pdf",
     "convert_to_ppt",
+    "convert_pptx_to_pdf",
+    "get_file_type",
+    "validate_input_file",
+    "SUPPORTED_INPUT_TYPES",
+    "SUPPORTED_OUTPUT_TYPES",
     "__version__",
 ]

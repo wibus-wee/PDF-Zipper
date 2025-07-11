@@ -10,7 +10,7 @@
 
 </div>
 
-A powerful PDF compression tool with both GUI and CLI interfaces, built with modern Python.
+A powerful file processing tool supporting PDF compression, format conversion (PDF ↔ PPTX), with both GUI and CLI interfaces, built with modern Python.
 
 ## 📸 Screenshots
 
@@ -38,11 +38,13 @@ A powerful PDF compression tool with both GUI and CLI interfaces, built with mod
 ## ✨ Features
 
 - **🎯 Auto Compression**: Automatically compress PDFs to a target file size
-- **🔧 Manual Compression**: Compress PDFs with custom DPI settings  
-- **📊 PDF to PowerPoint**: Convert PDF pages to PowerPoint slides
+- **🔧 Manual Compression**: Compress PDFs with custom DPI settings
+- **📊 Bi-directional Conversion**: Convert between PDF and PowerPoint formats (PDF ↔ PPTX)
+- **📁 Multi-format Support**: Process both PDF (.pdf) and PowerPoint (.pptx) files
 - **🖥️ Beautiful GUI**: Modern terminal-based interface using Textual
 - **⌨️ CLI Interface**: Full command-line support with rich output
 - **📁 Drag & Drop Support**: Easy file selection in GUI mode
+- **🔄 Format Detection**: Automatic file type detection and validation
 - **📦 Easy Installation**: Install as a system command
 
 ## 🚀 Installation
@@ -123,11 +125,18 @@ pdf-zipper compress input.pdf --target-size 5.0
 # Compress PDF with specific DPI (manual mode)
 pdf-zipper compress input.pdf --dpi 150
 
+# Convert PPTX to PDF (new feature!)
+pdf-zipper compress presentation.pptx
+
 # Convert PDF to PowerPoint
 pdf-zipper convert input.pdf
 
-# Show PDF information
+# Convert PowerPoint to PDF (new feature!)
+pdf-zipper convert presentation.pptx
+
+# Show file information (supports PDF and PPTX)
 pdf-zipper info input.pdf
+pdf-zipper info presentation.pptx
 
 # Show help
 pdf-zipper --help
