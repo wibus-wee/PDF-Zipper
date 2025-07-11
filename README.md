@@ -37,7 +37,7 @@ A powerful file processing tool supporting PDF compression, format conversion (P
 
 ## ✨ Features
 
-- **🎯 Auto Compression**: Automatically compress PDFs to a target file size
+- **🎯 Auto Compression**: Automatically compress PDFs and PPTX files to a target file size
 - **🔧 Manual Compression**: Compress PDFs with custom DPI settings
 - **📊 Bi-directional Conversion**: Convert between PDF and PowerPoint formats (PDF ↔ PPTX)
 - **📁 Multi-format Support**: Process both PDF (.pdf) and PowerPoint (.pptx) files
@@ -153,10 +153,17 @@ The GUI provides an intuitive interface with file browser, drag & drop support, 
 
 ### Programmatic Usage
 ```python
-from pdf_zipper import autocompress_pdf, compress_pdf, convert_to_ppt
+from pdf_zipper import autocompress, autocompress_pdf, autocompress_pptx, compress_pdf, convert_to_ppt
 
-# Auto compress to 5MB
+# Auto compress any supported file type to 5MB (PDF or PPTX)
+autocompress("input.pdf", "output.pdf", 5.0, print)
+autocompress("input.pptx", "output.pptx", 5.0, print)
+
+# Auto compress PDF to 5MB (specific function)
 autocompress_pdf("input.pdf", "output.pdf", 5.0, print)
+
+# Auto compress PPTX to 5MB (specific function)
+autocompress_pptx("input.pptx", "output.pptx", 5.0, print)
 
 # Manual compress with 150 DPI
 compress_pdf("input.pdf", "output.pdf", 150, print)
@@ -197,15 +204,20 @@ isort src/
 
 ## 🔧 How It Works
 
-1. **Auto Compression**: Uses binary search to find the optimal DPI that achieves the target file size
+1. **Auto Compression**:
+   - **PDF**: Uses binary search to find the optimal DPI that achieves the target file size
+   - **PPTX**: Converts PPTX → PDF → optimizes DPI → converts back to PPTX
 2. **Manual Compression**: Converts PDF pages to images at specified DPI and recreates the PDF
 3. **PDF to PPT**: Extracts each page as an image and creates PowerPoint slides
+4. **PPTX to PDF**: Uses system tools (LibreOffice, unoconv) or Windows COM interface for conversion
 
 ## 💡 Tips
 
 - Higher DPI = better quality but larger file size
 - Auto compression may take longer but provides precise size control
 - For best results, start with the auto compression feature
+- **PPTX Auto Compression**: Maintains PowerPoint format while achieving target size
+- **PDF Auto Compression**: Direct optimization for fastest processing
 - Use the GUI for interactive file selection and real-time progress
 - Use CLI for batch processing and automation
 

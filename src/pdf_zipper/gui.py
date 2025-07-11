@@ -26,6 +26,7 @@ from textual.widgets import (
 )
 
 from .core import (
+    autocompress,
     autocompress_pdf,
     compress_pdf,
     convert_to_ppt,
@@ -406,8 +407,8 @@ class PDFZipperApp(App):
     def worker_autocompress(
         self, input_path: str, output_path: str, target_size: float, logger_func
     ) -> None:
-        """Worker for auto compression."""
-        autocompress_pdf(input_path, output_path, target_size, logger_func)
+        """Worker for auto compression (supports both PDF and PPTX)."""
+        autocompress(input_path, output_path, target_size, logger_func)
 
     @work(thread=True)
     def worker_manual_compress(
@@ -454,7 +455,8 @@ class PDFZipperApp(App):
         if event.button.id == "btn-custom-auto":
             target_size = 5.0  # 默认5MB
             log.write(f"使用默认目标大小: {target_size} MB")
-            output_path = f"{base}_auto_compressed.pdf"
+            # Auto-compression keeps the original file format
+            output_path = f"{base}_auto_compressed{input_ext}"
             self.worker_autocompress(input_path, output_path, target_size, logger)
 
         elif event.button.id == "btn-custom-manual":
@@ -475,7 +477,8 @@ class PDFZipperApp(App):
                 log.write("[bold red]Error: Invalid target size.[/bold red]")
                 return
             target_size = float(target_size_input.value)
-            output_path = f"{base}_auto_compressed.pdf"
+            # Auto-compression keeps the original file format
+            output_path = f"{base}_auto_compressed{input_ext}"
             self.worker_autocompress(input_path, output_path, target_size, logger)
 
         elif event.button.id == "btn-manual":

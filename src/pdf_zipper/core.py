@@ -104,38 +104,24 @@ def _generate_pdf_data(
     return pdf_buffer.getvalue()
 
 
-def autocompress_pdf(
-    input_path: str,
-    output_path: str,
+def _find_optimal_dpi(
+    doc: fitz.Document,
     target_size_mb: float,
     logger_func: Callable[[str], None],
     tolerance: float = 0.05,
-) -> None:
-    """Automatically adjusts DPI to compress a PDF to a target size."""
-    if not os.path.exists(input_path):
-        logger_func(f"[bold red]Error:[/bold red] Input file not found: '{input_path}'")
-        return
+) -> Tuple[float, Optional[bytes]]:
+    """
+    使用二分搜索找到最佳DPI以达到目标文件大小
 
-    original_size_mb = os.path.getsize(input_path) / (1024 * 1024)
-    if original_size_mb <= target_size_mb:
-        logger_func(
-            "[bold yellow]Info:[/bold yellow] Target size is not smaller than the original. Copying file directly."
-        )
-        import shutil
+    Args:
+        doc: PyMuPDF文档对象
+        target_size_mb: 目标文件大小（MB）
+        logger_func: 日志记录函数
+        tolerance: 容差范围
 
-        shutil.copy(input_path, output_path)
-        return
-
-    logger_func("Starting auto-compression...")
-    logger_func(f" - Original Size: {original_size_mb:.2f} MB")
-    logger_func(f" - Target Size:   {target_size_mb:.2f} MB")
-
-    try:
-        doc = fitz.open(input_path)
-    except Exception as e:
-        logger_func(f"[bold red]Error:[/bold red] Could not open PDF. Reason: {e}")
-        return
-
+    Returns:
+        Tuple[best_dpi, best_pdf_data]: 最佳DPI和对应的PDF数据
+    """
     dpi_low, dpi_high = 30, 300
     best_dpi, best_pdf_data = dpi_low, None
 
@@ -173,6 +159,42 @@ def autocompress_pdf(
             dpi_low = dpi_guess
             best_dpi, best_pdf_data = dpi_guess, pdf_data
 
+    return best_dpi, best_pdf_data
+
+
+def autocompress_pdf(
+    input_path: str,
+    output_path: str,
+    target_size_mb: float,
+    logger_func: Callable[[str], None],
+    tolerance: float = 0.05,
+) -> None:
+    """Automatically adjusts DPI to compress a PDF to a target size."""
+    if not os.path.exists(input_path):
+        logger_func(f"[bold red]Error:[/bold red] Input file not found: '{input_path}'")
+        return
+
+    original_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    if original_size_mb <= target_size_mb:
+        logger_func(
+            "[bold yellow]Info:[/bold yellow] Target size is not smaller than the original. Copying file directly."
+        )
+        import shutil
+
+        shutil.copy(input_path, output_path)
+        return
+
+    logger_func("Starting auto-compression...")
+    logger_func(f" - Original Size: {original_size_mb:.2f} MB")
+    logger_func(f" - Target Size:   {target_size_mb:.2f} MB")
+
+    try:
+        doc = fitz.open(input_path)
+    except Exception as e:
+        logger_func(f"[bold red]Error:[/bold red] Could not open PDF. Reason: {e}")
+        return
+
+    best_dpi, best_pdf_data = _find_optimal_dpi(doc, target_size_mb, logger_func, tolerance)
     doc.close()
 
     if best_pdf_data is None:
@@ -203,6 +225,133 @@ def autocompress_pdf(
     )
     logger_func(f"  - Compression:   {ratio:.2f}%")
     logger_func(f"  - Saved to:      [cyan]{output_path}[/cyan]")
+
+
+def autocompress_pptx(
+    input_path: str,
+    output_path: str,
+    target_size_mb: float,
+    logger_func: Callable[[str], None],
+    tolerance: float = 0.05,
+) -> None:
+    """
+    自动调整DPI以将PPTX文件压缩到目标大小
+
+    工作流程：PPTX → PDF → DPI优化 → PPTX
+    """
+    if not os.path.exists(input_path):
+        logger_func(f"[bold red]Error:[/bold red] Input file not found: '{input_path}'")
+        return
+
+    original_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    if original_size_mb <= target_size_mb:
+        logger_func(
+            "[bold yellow]Info:[/bold yellow] Target size is not smaller than the original. Copying file directly."
+        )
+        import shutil
+        shutil.copy(input_path, output_path)
+        return
+
+    logger_func("Starting PPTX auto-compression...")
+    logger_func(f" - Original Size: {original_size_mb:.2f} MB")
+    logger_func(f" - Target Size:   {target_size_mb:.2f} MB")
+
+    # 创建临时文件
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+        temp_pdf_path = temp_pdf.name
+
+    try:
+        # 步骤1：将PPTX转换为临时PDF
+        logger_func("Step 1: Converting PPTX to temporary PDF...")
+        convert_pptx_to_pdf(input_path, temp_pdf_path, logger_func)
+
+        if not os.path.exists(temp_pdf_path):
+            logger_func("[bold red]Error:[/bold red] Failed to convert PPTX to PDF.")
+            return
+
+        # 步骤2：使用DPI优化找到最佳压缩设置
+        logger_func("Step 2: Finding optimal DPI for target size...")
+        try:
+            doc = fitz.open(temp_pdf_path)
+        except Exception as e:
+            logger_func(f"[bold red]Error:[/bold red] Could not open temporary PDF. Reason: {e}")
+            return
+
+        best_dpi, best_pdf_data = _find_optimal_dpi(doc, target_size_mb, logger_func, tolerance)
+        doc.close()
+
+        if best_pdf_data is None:
+            logger_func(
+                "[yellow]Search finished without a perfect match. Regenerating with best found DPI...[/yellow]"
+            )
+            doc = fitz.open(temp_pdf_path)
+            best_pdf_data = _generate_pdf_data(doc, best_dpi, logger_func)
+            doc.close()
+
+        if not best_pdf_data:
+            logger_func("[bold red]Error:[/bold red] Failed to generate optimized PDF.")
+            return
+
+        # 步骤3：将优化后的PDF转换回PPTX
+        logger_func("Step 3: Converting optimized PDF back to PPTX...")
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as optimized_pdf:
+            optimized_pdf_path = optimized_pdf.name
+            with open(optimized_pdf_path, "wb") as f:
+                f.write(best_pdf_data)
+
+        try:
+            convert_to_ppt(optimized_pdf_path, output_path, int(best_dpi), logger_func)
+
+            if os.path.exists(output_path):
+                final_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+                ratio = (1 - final_size_mb / original_size_mb) * 100 if original_size_mb > 0 else 0
+
+                logger_func("\n[bold green]🎉 PPTX Auto-compression Complete![/bold green]")
+                logger_func(f"  - Original size: {original_size_mb:.2f} MB")
+                logger_func(f"  - Final size:    {final_size_mb:.2f} MB (Target: {target_size_mb:.2f} MB)")
+                logger_func(f"  - Compression:   {ratio:.2f}%")
+                logger_func(f"  - Best DPI:      {int(best_dpi)}")
+                logger_func(f"  - Saved to:      [cyan]{output_path}[/cyan]")
+            else:
+                logger_func("[bold red]Error:[/bold red] Failed to create final PPTX file.")
+
+        finally:
+            # 清理临时的优化PDF文件
+            if os.path.exists(optimized_pdf_path):
+                os.unlink(optimized_pdf_path)
+
+    finally:
+        # 清理临时PDF文件
+        if os.path.exists(temp_pdf_path):
+            os.unlink(temp_pdf_path)
+
+
+def autocompress(
+    input_path: str,
+    output_path: str,
+    target_size_mb: float,
+    logger_func: Callable[[str], None],
+    tolerance: float = 0.05,
+) -> None:
+    """
+    通用的自动压缩函数，根据文件类型调用相应的压缩函数
+
+    支持的文件类型：
+    - PDF: 直接压缩
+    - PPTX: 转换为PDF → 压缩 → 转换回PPTX
+    """
+    if not validate_input_file(input_path):
+        logger_func(f"[bold red]Error:[/bold red] Unsupported file type or file not found: '{input_path}'")
+        return
+
+    ext, _ = get_file_type(input_path)
+
+    if ext == '.pdf':
+        autocompress_pdf(input_path, output_path, target_size_mb, logger_func, tolerance)
+    elif ext == '.pptx':
+        autocompress_pptx(input_path, output_path, target_size_mb, logger_func, tolerance)
+    else:
+        logger_func(f"[bold red]Error:[/bold red] Autocompress not supported for file type: {ext}")
 
 
 def compress_pdf(

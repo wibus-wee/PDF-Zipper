@@ -13,6 +13,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from .core import (
+    autocompress,
     autocompress_pdf,
     compress_pdf,
     convert_to_ppt,
@@ -102,8 +103,12 @@ def compress_command(
     # Generate output filename if not provided
     if output_file is None:
         if input_ext == ".pptx":
-            # For PPTX input, default output is PDF
-            output_file = input_file.with_suffix(".pdf")
+            if target_size:
+                # For PPTX auto-compression, keep PPTX format
+                output_file = input_file.with_stem(f"{input_file.stem}_auto_compressed")
+            else:
+                # For PPTX manual compression (conversion), default output is PDF
+                output_file = input_file.with_suffix(".pdf")
         else:
             # For PDF input, add appropriate suffix
             if target_size:
@@ -134,18 +139,18 @@ def compress_command(
             console.print(clean_message)
 
     try:
-        if input_ext == ".pptx":
-            # PPTX to PDF conversion
+        if target_size:
+            # Auto-compression mode (supports both PDF and PPTX)
+            console.print(f"🎯 Auto-compressing to {target_size} MB...")
+            autocompress(str(input_file), str(output_file), target_size, logger)
+        elif input_ext == ".pptx":
+            # PPTX to PDF conversion (manual mode)
             console.print(f"📊 Converting PPTX to PDF...")
             convert_pptx_to_pdf(str(input_file), str(output_file), logger)
         else:
-            # PDF compression
-            if target_size:
-                console.print(f"🎯 Auto-compressing to {target_size} MB...")
-                autocompress_pdf(str(input_file), str(output_file), target_size, logger)
-            else:
-                console.print(f"🗜️ Compressing with {dpi} DPI...")
-                compress_pdf(str(input_file), str(output_file), dpi, logger)
+            # PDF manual compression
+            console.print(f"🗜️ Compressing with {dpi} DPI...")
+            compress_pdf(str(input_file), str(output_file), dpi, logger)
 
         if not quiet:
             console.print(f"✅ Processing complete: {output_file}", style="green")
