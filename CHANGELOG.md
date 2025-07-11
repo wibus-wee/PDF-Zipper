@@ -5,6 +5,27 @@ All notable changes to PDF Zipper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-01-11
+
+### Added
+- **🎯 PPTX Auto Compression**: New feature to automatically compress PPTX files to target file size
+- **Universal Auto Compression**: New `autocompress()` function that supports both PDF and PPTX files
+- **Enhanced CLI**: CLI now supports PPTX auto compression with `--target-size` parameter
+- **Enhanced GUI**: GUI auto compression now works with both PDF and PPTX files
+- **New API Functions**: Added `autocompress_pptx()` for PPTX-specific compression
+
+### Improved
+- **Code Architecture**: Refactored DPI optimization logic into reusable `_find_optimal_dpi()` function
+- **File Format Preservation**: Auto compression now maintains original file format (PPTX → PPTX, PDF → PDF)
+- **Error Handling**: Enhanced error handling and temporary file management for PPTX processing
+- **Documentation**: Updated README with comprehensive examples and usage instructions
+
+### Technical Details
+- **PPTX Compression Workflow**: PPTX → PDF → DPI optimization → PPTX conversion chain
+- **Binary Search Algorithm**: Uses iterative DPI optimization to achieve precise target file sizes
+- **Backward Compatibility**: All existing APIs remain unchanged and fully functional
+- **Temporary File Management**: Automatic cleanup of intermediate files during PPTX processing
+
 ## [1.1.1] - 2025-01-10
 
 ### Removed
