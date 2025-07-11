@@ -44,7 +44,7 @@ class PDFZipperApp(App):
     """Main application class for PDF Zipper GUI."""
 
     CSS_PATH = None  # We'll define CSS inline
-    BINDINGS = [("q", "quit", "Quit")]
+    BINDINGS = [("q", "quit", "Quit"), ("f5", "refresh_tree", "Refresh Tree")]
 
     # Inline CSS
     CSS = """
@@ -171,7 +171,7 @@ class PDFZipperApp(App):
                         yield Button(
                             "Refresh Info", variant="default", id="btn-refresh-info"
                         )
-                yield RichLog(id="log", wrap=True, highlight=True)
+                yield RichLog(id="log", wrap=True, highlight=True, markup=True)
         yield Footer()
 
     def on_mount(self) -> None:
@@ -540,6 +540,14 @@ class PDFZipperApp(App):
             self._check_conversion_tools()
             self._update_system_info()
             log.write("✅ System information updated")
+
+    def action_refresh_tree(self) -> None:
+        """刷新文件树"""
+        log = self.query_one(RichLog)
+        log.write("🔄 Refreshing file tree...")
+        tree = self.query_one(DirectoryTree)
+        tree.reload_node(tree.root)
+        log.write("✅ File tree refreshed")
 
 
 def launch_gui():
