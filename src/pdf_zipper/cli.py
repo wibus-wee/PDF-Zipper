@@ -112,6 +112,7 @@ def compress_command(
         else:
             # For PDF input, add appropriate suffix
             if target_size:
+                # Default to same format for auto-compression
                 output_file = input_file.with_stem(f"{input_file.stem}_auto_compressed")
             else:
                 output_file = input_file.with_stem(f"{input_file.stem}_compressed")

@@ -162,6 +162,95 @@ def _find_optimal_dpi(
     return best_dpi, best_pdf_data
 
 
+def _find_optimal_dpi_for_pptx(
+    doc: fitz.Document,
+    target_size_mb: float,
+    logger_func: Callable[[str], None],
+    tolerance: float = 0.05,
+) -> Tuple[float, Optional[str]]:
+    """
+    使用二分搜索找到最佳DPI以达到目标PPTX文件大小
+
+    Args:
+        doc: PyMuPDF文档对象
+        target_size_mb: 目标PPTX文件大小（MB）
+        logger_func: 日志记录函数
+        tolerance: 容差范围
+
+    Returns:
+        Tuple[best_dpi, best_pptx_path]: 最佳DPI和对应的PPTX文件路径
+    """
+    dpi_low, dpi_high = 30, 300
+    best_dpi, best_pptx_path = dpi_low, None
+
+    ITERATIONS = 7
+    logger_func(f"Starting iterative search for best DPI targeting PPTX size ({ITERATIONS} iterations)...")
+
+    for i in range(ITERATIONS):
+        dpi_guess = (dpi_low + dpi_high) / 2
+        if dpi_guess < dpi_low + 1:
+            break
+
+        logger_func(
+            f"\n[bold]Attempt {i + 1}/{ITERATIONS}:[/bold] Trying DPI = {int(dpi_guess)}"
+        )
+
+        # 生成PDF数据
+        pdf_data = _generate_pdf_data(doc, dpi_guess, logger_func)
+        if not pdf_data:
+            logger_func(
+                f"[yellow]Failed to generate PDF at DPI {int(dpi_guess)}.[/yellow]"
+            )
+            dpi_high = dpi_guess
+            continue
+
+        # 将PDF转换为PPTX并检查PPTX文件大小
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+            temp_pdf_path = temp_pdf.name
+            with open(temp_pdf_path, "wb") as f:
+                f.write(pdf_data)
+
+        with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_pptx:
+            temp_pptx_path = temp_pptx.name
+
+        try:
+            # 转换为PPTX
+            convert_to_ppt(temp_pdf_path, temp_pptx_path, int(dpi_guess), lambda msg: None)  # 静默转换
+
+            if os.path.exists(temp_pptx_path):
+                current_size_mb = os.path.getsize(temp_pptx_path) / (1024 * 1024)
+                logger_func(f"  - Generated PPTX size: {current_size_mb:.2f} MB")
+
+                if abs(current_size_mb - target_size_mb) / target_size_mb <= tolerance:
+                    logger_func("[green]PPTX size is within tolerance. Search finished.[/green]")
+                    # 清理之前的最佳文件
+                    if best_pptx_path and os.path.exists(best_pptx_path):
+                        os.unlink(best_pptx_path)
+                    best_dpi, best_pptx_path = dpi_guess, temp_pptx_path
+                    break
+
+                if current_size_mb > target_size_mb:
+                    dpi_high = dpi_guess
+                    # 清理当前文件
+                    os.unlink(temp_pptx_path)
+                else:
+                    dpi_low = dpi_guess
+                    # 清理之前的最佳文件
+                    if best_pptx_path and os.path.exists(best_pptx_path):
+                        os.unlink(best_pptx_path)
+                    best_dpi, best_pptx_path = dpi_guess, temp_pptx_path
+            else:
+                logger_func(f"[yellow]Failed to generate PPTX at DPI {int(dpi_guess)}.[/yellow]")
+                dpi_high = dpi_guess
+
+        finally:
+            # 清理临时PDF文件
+            if os.path.exists(temp_pdf_path):
+                os.unlink(temp_pdf_path)
+
+    return best_dpi, best_pptx_path
+
+
 def autocompress_pdf(
     input_path: str,
     output_path: str,
@@ -326,6 +415,68 @@ def autocompress_pptx(
             os.unlink(temp_pdf_path)
 
 
+def autocompress_pdf_to_pptx(
+    input_path: str,
+    output_path: str,
+    target_size_mb: float,
+    logger_func: Callable[[str], None],
+    tolerance: float = 0.05,
+) -> None:
+    """
+    自动调整DPI以将PDF文件压缩到目标大小并输出为PPTX格式
+
+    工作流程：PDF → DPI优化（基于PPTX大小） → PPTX
+    """
+    if not os.path.exists(input_path):
+        logger_func(f"[bold red]Error:[/bold red] Input file not found: '{input_path}'")
+        return
+
+    # 验证输入文件是PDF
+    ext, _ = get_file_type(input_path)
+    if ext != '.pdf':
+        logger_func(f"[bold red]Error:[/bold red] Input file must be PDF, got: {ext}")
+        return
+
+    original_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    logger_func("Starting PDF to target-size PPTX conversion...")
+    logger_func(f" - Original Size: {original_size_mb:.2f} MB")
+    logger_func(f" - Target Size:   {target_size_mb:.2f} MB")
+
+    try:
+        doc = fitz.open(input_path)
+    except Exception as e:
+        logger_func(f"[bold red]Error:[/bold red] Could not open PDF. Reason: {e}")
+        return
+
+    # 使用新的DPI优化逻辑，直接基于PPTX文件大小进行优化
+    logger_func("Finding optimal DPI based on final PPTX size...")
+    best_dpi, best_pptx_path = _find_optimal_dpi_for_pptx(doc, target_size_mb, logger_func, tolerance)
+    doc.close()
+
+    if best_pptx_path is None or not os.path.exists(best_pptx_path):
+        logger_func("[bold red]Error:[/bold red] Failed to generate target-size PPTX.")
+        return
+
+    try:
+        # 移动最佳PPTX文件到目标位置
+        import shutil
+        shutil.move(best_pptx_path, output_path)
+
+        final_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+
+        logger_func("\n[bold green]🎉 PDF to Target-size PPTX Complete![/bold green]")
+        logger_func(f"  - Original size: {original_size_mb:.2f} MB")
+        logger_func(f"  - Final size:    {final_size_mb:.2f} MB (Target: {target_size_mb:.2f} MB)")
+        logger_func(f"  - Best DPI:      {int(best_dpi)}")
+        logger_func(f"  - Saved to:      [cyan]{output_path}[/cyan]")
+
+    except Exception as e:
+        logger_func(f"[bold red]Error:[/bold red] Failed to save final PPTX file: {e}")
+        # 清理临时文件
+        if best_pptx_path and os.path.exists(best_pptx_path):
+            os.unlink(best_pptx_path)
+
+
 def autocompress(
     input_path: str,
     output_path: str,
@@ -334,24 +485,30 @@ def autocompress(
     tolerance: float = 0.05,
 ) -> None:
     """
-    通用的自动压缩函数，根据文件类型调用相应的压缩函数
+    通用的自动压缩函数，根据文件类型和输出格式调用相应的压缩函数
 
-    支持的文件类型：
-    - PDF: 直接压缩
-    - PPTX: 转换为PDF → 压缩 → 转换回PPTX
+    支持的转换：
+    - PDF → PDF: 直接压缩
+    - PPTX → PPTX: 转换为PDF → 压缩 → 转换回PPTX
+    - PDF → PPTX: DPI优化 → 转换为PPTX
     """
     if not validate_input_file(input_path):
         logger_func(f"[bold red]Error:[/bold red] Unsupported file type or file not found: '{input_path}'")
         return
 
-    ext, _ = get_file_type(input_path)
+    input_ext, _ = get_file_type(input_path)
+    output_ext = Path(output_path).suffix.lower()
 
-    if ext == '.pdf':
+    # 根据输入和输出格式选择处理方式
+    if input_ext == '.pdf' and output_ext == '.pdf':
         autocompress_pdf(input_path, output_path, target_size_mb, logger_func, tolerance)
-    elif ext == '.pptx':
+    elif input_ext == '.pptx' and output_ext == '.pptx':
         autocompress_pptx(input_path, output_path, target_size_mb, logger_func, tolerance)
+    elif input_ext == '.pdf' and output_ext == '.pptx':
+        autocompress_pdf_to_pptx(input_path, output_path, target_size_mb, logger_func, tolerance)
     else:
-        logger_func(f"[bold red]Error:[/bold red] Autocompress not supported for file type: {ext}")
+        logger_func(f"[bold red]Error:[/bold red] Unsupported conversion: {input_ext} → {output_ext}")
+        logger_func("Supported conversions: PDF→PDF, PPTX→PPTX, PDF→PPTX")
 
 
 def compress_pdf(
@@ -690,19 +847,59 @@ def _merge_pdfs(pdf_paths: list, output_path: str, logger_func: Callable[[str], 
         logger_func(f"[bold red]Error:[/bold red] Failed to merge PDFs: {e}")
 
 
+def _optimize_image_for_pptx(img: Image.Image, target_quality: int = 85) -> bytes:
+    """
+    优化图像以减小PPTX文件大小
+
+    Args:
+        img: PIL图像对象
+        target_quality: JPEG质量 (1-100)
+
+    Returns:
+        bytes: 压缩后的图像数据
+    """
+    img_buffer = io.BytesIO()
+
+    # 如果图像很大，先进行适度缩放
+    max_dimension = 1920  # 最大尺寸限制
+    if max(img.width, img.height) > max_dimension:
+        ratio = max_dimension / max(img.width, img.height)
+        new_width = int(img.width * ratio)
+        new_height = int(img.height * ratio)
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+    # 使用JPEG压缩，在质量和文件大小之间取得平衡
+    img.save(img_buffer, format='JPEG', quality=target_quality, optimize=True)
+    return img_buffer.getvalue()
+
+
 def convert_to_ppt(
     input_path: str, output_path: str, dpi: int, logger_func: Callable[[str], None]
 ) -> None:
-    """Converts a PDF to a PowerPoint presentation."""
+    """Converts a PDF to a PowerPoint presentation with optimized image compression."""
     logger_func("Starting PDF to PPT conversion...")
     doc = fitz.open(input_path)
     prs = Presentation()
     total_pages = len(doc)
 
+    # 根据页面数量调整压缩质量
+    if total_pages > 50:
+        quality = 70  # 页面很多时使用更高压缩
+        logger_func(f"Large document ({total_pages} pages), using higher compression (quality: {quality})")
+    elif total_pages > 20:
+        quality = 80  # 中等页面数使用中等压缩
+        logger_func(f"Medium document ({total_pages} pages), using medium compression (quality: {quality})")
+    else:
+        quality = 85  # 页面较少时使用较低压缩
+        logger_func(f"Small document ({total_pages} pages), using standard compression (quality: {quality})")
+
     for i, page in enumerate(doc):
         logger_func(f"  - Processing page {i+1}/{total_pages}")
         pix = page.get_pixmap(dpi=int(dpi))
-        img_data = pix.tobytes("png")
+
+        # 转换为PIL图像并优化
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        img_data = _optimize_image_for_pptx(img, quality)
 
         prs.slide_width = Inches(page.rect.width / 72)
         prs.slide_height = Inches(page.rect.height / 72)

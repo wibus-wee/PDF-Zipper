@@ -19,6 +19,8 @@ from textual.widgets import (
     Header,
     Input,
     Label,
+    RadioButton,
+    RadioSet,
     RichLog,
     Static,
     TabbedContent,
@@ -130,6 +132,11 @@ class PDFZipperApp(App):
                             id="auto-size",
                             validators=[Number(minimum=0)],
                         )
+                        yield Label("Output Format:")
+                        with RadioSet(id="output-format"):
+                            yield RadioButton("Same as input", value=True, id="format-same")
+                            yield RadioButton("PDF", id="format-pdf")
+                            yield RadioButton("PPTX", id="format-pptx")
                         yield Button(
                             "Start Auto Compress", variant="primary", id="btn-auto"
                         )
@@ -477,8 +484,24 @@ class PDFZipperApp(App):
                 log.write("[bold red]Error: Invalid target size.[/bold red]")
                 return
             target_size = float(target_size_input.value)
-            # Auto-compression keeps the original file format
-            output_path = f"{base}_auto_compressed{input_ext}"
+
+            # 获取输出格式选择
+            format_radio = self.query_one("#output-format", RadioSet)
+            selected_format = format_radio.pressed_button
+
+            if selected_format and selected_format.id == "format-pdf":
+                output_ext = ".pdf"
+                format_desc = "PDF"
+            elif selected_format and selected_format.id == "format-pptx":
+                output_ext = ".pptx"
+                format_desc = "PPTX"
+            else:
+                # 默认保持原格式
+                output_ext = input_ext
+                format_desc = "same as input"
+
+            output_path = f"{base}_auto_compressed{output_ext}"
+            log.write(f"输出格式: {format_desc}")
             self.worker_autocompress(input_path, output_path, target_size, logger)
 
         elif event.button.id == "btn-manual":

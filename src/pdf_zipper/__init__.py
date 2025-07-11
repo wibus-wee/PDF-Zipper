@@ -13,6 +13,7 @@ __email__ = "wibus_wee@outlook.com"
 from .core import (
     autocompress,
     autocompress_pdf,
+    autocompress_pdf_to_pptx,
     autocompress_pptx,
     compress_pdf,
     convert_to_ppt,
@@ -26,6 +27,7 @@ from .core import (
 __all__ = [
     "autocompress",
     "autocompress_pdf",
+    "autocompress_pdf_to_pptx",
     "autocompress_pptx",
     "compress_pdf",
     "convert_to_ppt",

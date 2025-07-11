@@ -153,23 +153,21 @@ The GUI provides an intuitive interface with file browser, drag & drop support, 
 
 ### Programmatic Usage
 ```python
-from pdf_zipper import autocompress, autocompress_pdf, autocompress_pptx, compress_pdf, convert_to_ppt
+from pdf_zipper import autocompress, autocompress_pdf, autocompress_pptx, autocompress_pdf_to_pptx, compress_pdf, convert_to_ppt
 
-# Auto compress any supported file type to 5MB (PDF or PPTX)
-autocompress("input.pdf", "output.pdf", 5.0, print)
-autocompress("input.pptx", "output.pptx", 5.0, print)
+# Universal auto compression (supports format conversion)
+autocompress("input.pdf", "output.pdf", 5.0, print)      # PDF → PDF
+autocompress("input.pptx", "output.pptx", 5.0, print)    # PPTX → PPTX
+autocompress("input.pdf", "output.pptx", 5.0, print)     # PDF → PPTX (NEW!)
 
-# Auto compress PDF to 5MB (specific function)
-autocompress_pdf("input.pdf", "output.pdf", 5.0, print)
+# Specific auto compression functions
+autocompress_pdf("input.pdf", "output.pdf", 5.0, print)           # PDF → PDF
+autocompress_pptx("input.pptx", "output.pptx", 5.0, print)        # PPTX → PPTX
+autocompress_pdf_to_pptx("input.pdf", "output.pptx", 5.0, print)  # PDF → PPTX (NEW!)
 
-# Auto compress PPTX to 5MB (specific function)
-autocompress_pptx("input.pptx", "output.pptx", 5.0, print)
-
-# Manual compress with 150 DPI
-compress_pdf("input.pdf", "output.pdf", 150, print)
-
-# Convert to PowerPoint
-convert_to_ppt("input.pdf", "output.pptx", 150, print)
+# Manual compression and conversion
+compress_pdf("input.pdf", "output.pdf", 150, print)      # Manual PDF compression
+convert_to_ppt("input.pdf", "output.pptx", 150, print)   # PDF → PPTX conversion
 ```
 
 ## 🛠️ Development
@@ -205,19 +203,23 @@ isort src/
 ## 🔧 How It Works
 
 1. **Auto Compression**:
-   - **PDF**: Uses binary search to find the optimal DPI that achieves the target file size
-   - **PPTX**: Converts PPTX → PDF → optimizes DPI → converts back to PPTX
+   - **PDF → PDF**: Uses binary search to find the optimal DPI that achieves the target file size
+   - **PPTX → PPTX**: Converts PPTX → PDF → optimizes DPI → converts back to PPTX
+   - **PDF → PPTX**: Optimizes PDF DPI → converts to PowerPoint format (NEW!)
 2. **Manual Compression**: Converts PDF pages to images at specified DPI and recreates the PDF
-3. **PDF to PPT**: Extracts each page as an image and creates PowerPoint slides
-4. **PPTX to PDF**: Uses system tools (LibreOffice, unoconv) or Windows COM interface for conversion
+3. **Format Conversion**:
+   - **PDF to PPT**: Extracts each page as an image and creates PowerPoint slides
+   - **PPTX to PDF**: Uses system tools (LibreOffice, unoconv) or Windows COM interface
 
 ## 💡 Tips
 
 - Higher DPI = better quality but larger file size
 - Auto compression may take longer but provides precise size control
 - For best results, start with the auto compression feature
-- **PPTX Auto Compression**: Maintains PowerPoint format while achieving target size
-- **PDF Auto Compression**: Direct optimization for fastest processing
+- **Format Conversion Options**:
+  - **PDF → PDF**: Direct optimization for fastest processing
+  - **PPTX → PPTX**: Maintains PowerPoint format while achieving target size
+  - **PDF → PPTX**: Convert and optimize in one step (NEW!)
 - Use the GUI for interactive file selection and real-time progress
 - Use CLI for batch processing and automation
 
