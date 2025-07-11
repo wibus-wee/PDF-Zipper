@@ -5,6 +5,20 @@ All notable changes to PDF Zipper will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-01-11
+
+### Fixed
+- **🎯 Critical Fix: PDF→PPTX Target Size Calculation**: Fixed DPI optimization to base calculations on final PPTX file size instead of intermediate PDF size
+- **📊 Accurate Size Control**: PDF to PPTX conversion now correctly achieves user-specified target file sizes
+- **🔧 Image Compression Optimization**: Improved PDF to PPTX conversion with JPEG compression and intelligent quality adjustment based on document size
+- **💾 Memory Management**: Enhanced temporary file handling during cross-format conversions
+
+### Technical Details
+- **Root Cause**: Previous logic optimized DPI based on PDF size, then converted to PPTX, causing target size inaccuracy
+- **Solution**: New `_find_optimal_dpi_for_pptx()` function performs DPI optimization directly on PPTX output
+- **Process**: Each iteration now generates PDF → converts to PPTX → checks PPTX size → adjusts DPI accordingly
+- **Impact**: All interfaces (CLI, GUI, API) now provide accurate target size control for PDF→PPTX conversions
+
 ## [1.2.0] - 2025-01-11
 
 ### Added

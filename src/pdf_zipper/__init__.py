@@ -6,7 +6,7 @@ for compressing PDF files, converting between PDF and PowerPoint formats,
 and performing various file processing tasks with multi-format support.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __author__ = "wibus-wee"
 __email__ = "wibus_wee@outlook.com"
 

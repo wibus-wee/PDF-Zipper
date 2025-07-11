@@ -63,6 +63,10 @@ pip install -e .
 
 ### Standalone Executable (No Python Required)
 
+<pre align="center">
+🧪 Working in Progress
+</pre>
+
 Download the pre-built executable for your platform:
 
 **macOS (Apple Silicon)**
@@ -103,10 +107,6 @@ pip install -e .
 git clone https://github.com/your-username/pdf-zipper.git
 cd pdf-zipper
 ./install.sh
-```
-```bash
-# Will be available after publishing to PyPI
-pip install pdf-zipper
 ```
 
 ## 📖 Usage
